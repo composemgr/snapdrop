@@ -47,8 +47,8 @@ See `docker-compose.yaml` for complete list of configurable options.
 
 ## 📂 Volumes
 
-- `./rootfs/config/snapdrop` - Data storage
-- `./rootfs/data/snapdrop` - Data storage
+- `./volumes/config/snapdrop` - Data storage
+- `./volumes/data/snapdrop` - Data storage
 
 ## 🔍 Logging
 
