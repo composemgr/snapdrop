@@ -1,5 +1,6 @@
 # nginx proxy address - http://172.17.0.1:8105
 
+name: snapdrop
 x-logging: &default-logging
   driver: json-file
   options:
@@ -7,28 +8,30 @@ x-logging: &default-logging
     max-file: "1"
 
 services:
-  snapdrop:
-    image: snapdrop/snapdrop:latest
+  app:
+    image: lscr.io/linuxserver/snapdrop:latest
+    pull_policy: always
     container_name: snapdrop-app
-    restart: unless-stopped
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
     logging: *default-logging
     networks:
       - snapdrop
     ports:
-      - "8105:8105"
+      - "172.17.0.1:8105:80"
     environment:
       TZ: ${TZ:-America/New_York}
       PUID: ${SERVICE_USER:-1000}
       PGID: ${SERVICE_GROUP:-1000}
     volumes:
       - ./volumes/config/snapdrop:/config
-      - ./volumes/data/snapdrop:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8105"]
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
       interval: 30s
       timeout: 10s
       retries: 3
 
 networks:
   snapdrop:
+    name: snapdrop
     external: false
