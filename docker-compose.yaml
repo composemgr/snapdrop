@@ -9,7 +9,7 @@ x-logging: &default-logging
 
 services:
   app:
-    image: lscr.io/linuxserver/snapdrop:latest
+    image: lscr.io/linuxserver/pairdrop:latest
     pull_policy: always
     container_name: snapdrop-app
     hostname: ${BASE_HOST_NAME:-$HOSTNAME}
