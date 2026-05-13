@@ -17,12 +17,16 @@ services:
     logging: *default-logging
     networks:
       - snapdrop
+      - proxy
+      - cloudflare
     ports:
       - "172.17.0.1:8105:80"
     environment:
       TZ: ${TZ:-America/New_York}
       PUID: ${SERVICE_USER:-1000}
       PGID: ${SERVICE_GROUP:-1000}
+      CONTAINER_NAME: snapdrop-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
     volumes:
       - ./volumes/config/snapdrop:/config
     healthcheck:
@@ -30,8 +34,28 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    labels:
+      - 'traefik.enable=true'
+      - 'cloudflare.enable=true'
+      - 'traefik.docker.network=proxy'
+      - 'cloudflare.service=http://snapdrop-app:80'
+      - 'cloudflare.hostname=snapdrop.${CLOUDFLARE_ZONE_NAME:-}'
+      - 'traefik.http.routers.snapdrop-app.entrypoints=http'
+      - 'traefik.http.routers.snapdrop-app-secure.tls=true'
+      - 'traefik.http.routers.snapdrop-app.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.middlewares.snapdrop-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.snapdrop-app.middlewares=snapdrop-app-https-redirect'
+      - 'traefik.http.routers.snapdrop-app-secure.entrypoints=https'
+      - 'traefik.http.routers.snapdrop-app-secure.rule=Host($(${BASE_HOST_NAME:-$HOSTNAME}))'
+      - 'traefik.http.routers.snapdrop-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.snapdrop-app-secure.service=snapdrop-app'
+      - 'traefik.http.services.snapdrop-app.loadbalancer.server.port=80'
 
 networks:
   snapdrop:
     name: snapdrop
     external: false
+  proxy:
+    external: true
+  cloudflare:
+    external: true
