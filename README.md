@@ -1,14 +1,21 @@
-## 👋 Welcome to snapdrop 🚀
+## 👋 Welcome to Snapdrop 🚀
 
-Self-hosted snapdrop application
+Self-hosted file sharing that works in your browser
 
 ## 📋 Description
 
-Self-hosted snapdrop application
+Snapdrop is a self-hosted file sharing application where the transfer happens
+directly between browsers over WebRTC, with no accounts and no server-side
+storage in the middle. The linuxserver image wraps Pairdrop, the maintained
+fork of the original Snapdrop project, and serves the web UI on port 80.
+
+Transfers are ephemeral, a share exists only while at least one browser holds
+the room open. The config volume holds the Pairdrop instance settings; uploaded
+files are never written to the host.
 
 ## 🚀 Services
 
-- **snapdrop**: snapdrop/snapdrop:latest
+- **app**: lscr.io/linuxserver/pairdrop:latest
 
 ## 📦 Installation
 
@@ -21,7 +28,8 @@ curl -q -LSsf "https://raw.githubusercontent.com/composemgr/snapdrop/main/docker
 ```bash
 git clone "https://github.com/composemgr/snapdrop" ~/.local/srv/docker/snapdrop
 cd ~/.local/srv/docker/snapdrop
-docker compose up -d
+cp default.env .env
+docker compose --env-file .env up -d
 ```
 
 ### Option 3: Using composemgr
@@ -41,38 +49,85 @@ SERVICE_GROUP=1000
 
 See `docker-compose.yaml` for complete list of configurable options.
 
+### Environment Files
+
+`default.env.sample` holds the full set of variables and is copied to `.env`
+before starting the stack:
+
+```bash
+cp default.env .env
+docker compose --env-file .env up -d
+```
+
+`app.env.sample` holds the app-specific overrides and is copied to `app.env`:
+
+```bash
+cp app.env.sample app.env
+```
+
+`composemgr up` applies `app.env` and `default.env` automatically. Raw
+`docker compose` commands need `--env-file .env` to pick up the same values.
+
+### Reverse Proxy
+
+Three standalone compose files ship in this repo:
+
+| File | Use |
+|------|-----|
+| `docker-compose.yaml` | Default, published on `172.17.0.1:64346` |
+| `docker-compose.traefik.yaml` | Behind an existing external `traefik` network |
+| `docker-compose.tunnel.yaml` | Behind an existing external `cloudflare` tunnel network |
+
+```bash
+docker compose -f docker-compose.traefik.yaml --env-file .env up -d
+```
+
+Both proxy variants need WebSocket support, which the defaults provide. WebRTC
+itself is peer to peer and does not traverse the proxy.
+
 ## 🌐 Access
 
-- **Web Interface**: http://172.17.0.1:8105
+- **Web Interface**: http://172.17.0.1:64346
 
 ## 📂 Volumes
 
-- `./volumes/config/snapdrop` - Data storage
-- `./volumes/data/snapdrop` - Data storage
+- `./volumes/config/snapdrop` - Pairdrop configuration, generated on first start
+
+## 🔐 Security
+
+- There is no authentication, anyone who can reach the URL can start a transfer
+  with anyone else who visits the same page
+- Set `SERVICE_USER` and `SERVICE_GROUP` to the host user that should own the
+  config volume
+- Use HTTPS via the reverse proxy in production, browsers block camera,
+  microphone and clipboard access on plain HTTP origins, and WebRTC requires a
+  secure context outside `localhost`
+- The container is published only on the dockerhost address `172.17.0.1`
+- Regularly update Docker images for security patches
 
 ## 🔍 Logging
 
 ```shell
-docker compose logs -f snapdrop
+docker compose --env-file .env logs -f app
 ```
 
 ## 🛠️ Management
 
 ```bash
 # Start services
-docker compose up -d
+docker compose --env-file .env up -d
 
 # Stop services
-docker compose down
+docker compose --env-file .env down
 
 # Update to latest images
-docker compose pull && docker compose up -d
+docker compose --env-file .env pull && docker compose --env-file .env up -d
 
 # View logs
-docker compose logs -f
+docker compose --env-file .env logs -f
 
 # Restart services
-docker compose restart
+docker compose --env-file .env restart
 ```
 
 ## 📋 Requirements

@@ -1,0 +1,53 @@
+# nginx proxy address - http://172.17.0.1:64346
+
+name: snapdrop
+x-logging: &default-logging
+  options:
+    max-size: '5m'
+    max-file: '1'
+  driver: json-file
+
+services:
+  app:
+    image: lscr.io/linuxserver/pairdrop:latest
+    container_name: snapdrop-app
+    domainname: ${BASE_DOMAIN_NAME:-example.com}
+    hostname: ${BASE_HOST_NAME:-$HOSTNAME}
+    restart: always
+    pull_policy: always
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-America/New_York}
+      CONTAINER_NAME: snapdrop-app
+      HOSTNAME: ${BASE_HOST_NAME:-$HOSTNAME}
+      PUID: ${SERVICE_USER:-1000}
+      PGID: ${SERVICE_GROUP:-1000}
+    volumes:
+      - './volumes/config/snapdrop:/config:z'
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:80']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.docker.network=traefik'
+      - 'traefik.http.routers.snapdrop-app.entrypoints=http'
+      - 'traefik.http.routers.snapdrop-app.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`)'
+      - 'traefik.http.routers.snapdrop-app.middlewares=snapdrop-app-https-redirect'
+      - 'traefik.http.middlewares.snapdrop-app-https-redirect.redirectscheme.scheme=https'
+      - 'traefik.http.routers.snapdrop-app-secure.entrypoints=https'
+      - 'traefik.http.routers.snapdrop-app-secure.rule=Host(`${BASE_HOST_NAME:-$HOSTNAME}`)'
+      - 'traefik.http.routers.snapdrop-app-secure.tls.certresolver=cloudflare'
+      - 'traefik.http.routers.snapdrop-app-secure.service=snapdrop-app'
+      - 'traefik.http.services.snapdrop-app.loadbalancer.server.port=80'
+    networks:
+      - snapdrop
+      - traefik
+
+networks:
+  snapdrop:
+    name: snapdrop
+    external: false
+  traefik:
+    external: true
